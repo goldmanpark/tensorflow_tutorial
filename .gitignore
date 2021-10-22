@@ -1,0 +1,6 @@
+# Default ignored files
+/shelf/
+workspace.xml
+
+*.tar.gz
+/cifar-10-batches-py

@@ -24,29 +24,38 @@ class StopCallback(keras.callbacks.Callback):
             print("Reached 99% accuracy so cancelling training!")
             self.model.stop_training = True
 
-# create dataset
-train_datagen = ImageDataGenerator(rescale=1/255)
-
-(x_train, y_train), (x_test, y_test) = cifar10.load_data()
-x_train=x_train/255.0   #normalization
-x_test=x_test/255.0
-print('x_train :', np.shape(x_train))
-print('y_train :', np.shape(y_train))
-print('x_test :', np.shape(x_test))
-print('y_test :', np.shape(y_test))
-
-# build a CNN model
+# build a CNN model(VGG-style)
 model = keras.models.Sequential()
-model.add(keras.layers.Conv2D(filters=8, kernel_size=3, activation='relu', padding='same', input_shape=(32, 32, 3)))
+model.add(keras.layers.InputLayer(input_shape=(32, 32, 3)))
+model.add(keras.layers.Conv2D(filters=32, kernel_size=3, activation='relu', padding='same'))
+model.add(keras.layers.Conv2D(filters=32, kernel_size=3, activation='relu', padding='same'))
 model.add(keras.layers.MaxPooling2D(2, 2))
-model.add(keras.layers.Conv2D(filters=4, kernel_size=3, activation='relu', padding='same'))
+model.add(keras.layers.Conv2D(filters=64, kernel_size=3, activation='relu', padding='same'))
+model.add(keras.layers.Conv2D(filters=64, kernel_size=3, activation='relu', padding='same'))
+model.add(keras.layers.MaxPooling2D(2, 2))
+model.add(keras.layers.Conv2D(filters=128, kernel_size=3, activation='relu', padding='same'))
+model.add(keras.layers.Conv2D(filters=128, kernel_size=3, activation='relu', padding='same'))
 model.add(keras.layers.MaxPooling2D(2, 2))
 model.add(keras.layers.Flatten())
 model.add(keras.layers.Dense(128, activation='relu'))
 model.add(keras.layers.Dense(10, activation='softmax'))
-model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+sgd = keras.optimizers.SGD(lr=0.001, momentum=0.9)
+model.compile(loss='sparse_categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
 
-model.fit(x_train, y_train, epochs=20, callbacks=[StopCallback()])
+# create dataset with data_augmentation
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+x_train = np.array(x_train, dtype="float") / 255.0
+x_test = np.array(x_test, dtype="float") / 255.0
+
+BATCH_SIZE = 32
+datagen = ImageDataGenerator(zoom_range=0.2, rotation_range=15, horizontal_flip=True)
+datagen.fit(x_train)
+model.fit_generator(generator=datagen.flow(x_train, y_train, batch_size=BATCH_SIZE), 
+                    steps_per_epoch=len(x_train) // BATCH_SIZE // 5,
+                    epochs=50, 
+                    callbacks=[StopCallback()], 
+                    validation_data=(x_test, y_test), 
+                    validation_steps=len(x_test) // BATCH_SIZE // 5)
 
 test_loss, test_accuracy = model.evaluate(x_test, y_test)
 print("Test accuracy: {}".format(test_accuracy))
