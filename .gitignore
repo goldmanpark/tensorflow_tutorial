@@ -2,5 +2,4 @@
 /shelf/
 workspace.xml
 
-*.tar.gz
-/cifar-10-batches-py
+/kagglecatsanddogs_3367a
