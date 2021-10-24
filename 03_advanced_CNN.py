@@ -5,12 +5,6 @@ from matplotlib import pyplot as plt
 import os, random, shutil
 from pathlib import Path
 
-class StopCallback(keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs={}):
-        if logs.get('accuracy') >= 0.85 :
-            print("Reached 85% accuracy so cancelling training!")
-            self.model.stop_training = True
-
 # data split
 # cats/666.jpg (error)
 # dogs/11702.jpg (error)
@@ -70,7 +64,7 @@ model_1.add(keras.layers.Dense(128, activation='relu'))
 model_1.add(keras.layers.Dropout(0.5))
 model_1.add(keras.layers.Dense(1, activation='sigmoid'))
 model_1.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-history1 = model_1.fit(train_gen, epochs=10, validation_data=test_gen, callbacks=[StopCallback()])
+history1 = model_1.fit(train_gen, epochs=10, validation_data=test_gen)
 
 # use pre-trained model(InceptionV3)
 from tensorflow.keras.applications.inception_v3 import InceptionV3
@@ -84,13 +78,13 @@ temp = keras.layers.Dropout(0.5) (temp)
 temp = keras.layers.Dense(1, activation='sigmoid') (temp)
 model_2 = keras.Model(inputs=pre_model.input, outputs=temp)
 model_2.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-history2 = model_2.fit(train_gen, epochs=10, validation_data=test_gen, callbacks=[StopCallback()])
+history2 = model_2.fit(train_gen, epochs=10, validation_data=test_gen)
 
 plt.xlabel('EPOCH')
 plt.ylabel('VAL_ACC')
 y1 = history1.history['val_accuracy']
 y2 = history2.history['val_accuracy']
 plt.plot(range(len(y1)), y1, label='model1')
-plt.plot(range(len(y1)), y2, label='model2')
+plt.plot(range(len(y2)), y2, label='model2')
 plt.legend()
 plt.show()
