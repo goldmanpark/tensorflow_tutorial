@@ -1,7 +1,12 @@
 import csv
 import numpy as np
+from tensorflow import keras
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+
+# vaiables
+VOCAB_SIZE = 1000
+MAX_LEN = 120
 
 # extract words, sentences from csv file
 sentences = []
@@ -20,15 +25,38 @@ with open("./bbc-text.csv", 'r') as csvfile:
             sentence = sentence.replace("  ", " ")
         sentences.append(sentence)
 
-# sentence tokenize(create word dictionary)
-text_tokenizer = Tokenizer(oov_token="<OOV>", num_words=10000)
-text_tokenizer.fit_on_texts(sentences)
-print(text_tokenizer.word_index)
-print(text_tokenizer.word_counts)
+# separate train-test data
+TRAIN_RATIO = 0.8
+limit = int(len(sentences) * TRAIN_RATIO)
+train_sentences = sentences[:limit]
+train_labels = labels[:limit]
+test_sentences = sentences[limit:]
+test_labels = labels[limit:]
+
+# preprocessing : tokenize(create word dictionary), integer encoding and text padding
+tokenizer = Tokenizer(oov_token="<OOV>", num_words=VOCAB_SIZE)
+tokenizer.fit_on_texts(train_sentences)
+
+train_sequence = tokenizer.texts_to_sequences(train_sentences)
+train_padded = pad_sequences(train_sequence, maxlen=MAX_LEN, padding='post', truncating='post')
+test_sequence = tokenizer.texts_to_sequences(test_sentences)
+test_padded = pad_sequences(test_sequence, maxlen=MAX_LEN, padding='post', truncating='post')
 
 label_tokenizer = Tokenizer()
 label_tokenizer.fit_on_texts(labels)
-print(label_tokenizer.word_index)
-print(label_tokenizer.word_counts)
+train_label_sequence = np.array(label_tokenizer.texts_to_sequences(train_labels))
+test_label_sequence = np.array(label_tokenizer.texts_to_sequences(test_labels))
 
-# text padding
+# model
+SOFTMAX_UNITS = len(label_tokenizer.word_index) + 1
+model = keras.Sequential()
+model.add(keras.layers.Embedding(VOCAB_SIZE, 16, input_length=MAX_LEN))
+model.add(keras.layers.GlobalAveragePooling1D())
+model.add(keras.layers.Dense(24, activation='relu'))
+model.add(keras.layers.Dense(SOFTMAX_UNITS, activation='softmax'))
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+model.fit(train_padded, train_label_sequence, epochs=20, validation_data=(test_padded, test_label_sequence))
+
+test_loss, test_accuracy = model.evaluate(test_padded, test_label_sequence)
+print("Test accuracy: {}".format(test_accuracy))
